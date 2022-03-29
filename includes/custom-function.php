@@ -269,8 +269,8 @@
         if (isset($woocommerce->cart->cart_contents) && is_array($woocommerce->cart->cart_contents)) {
             foreach ($woocommerce->cart->cart_contents as $cart_item) {
                 // modify by Jfrost 3/24
-                $wad_qbp_square_size_h = $cart_item['wad_qbp_square_size_h'];
-                $wad_qbp_square_size_w = $cart_item['wad_qbp_square_size_w'];
+                $wad_qbp_square_size_h = isset($cart_item['wad_qbp_square_size_h']) && $cart_item['wad_qbp_square_size_h'] !== '' ? $cart_item['wad_qbp_square_size_h'] : 0;
+                $wad_qbp_square_size_w = isset($cart_item['wad_qbp_square_size_w']) && $cart_item['wad_qbp_square_size_w'] !== '' ? $cart_item['wad_qbp_square_size_w'] : 0;
                 $j_cart_key = $cart_item["variation_id"].'_'.$wad_qbp_square_size_w.'_'.$wad_qbp_square_size_h;
                 if (array_key_exists($j_cart_key,$item_qties)){
                     if (!empty($j_cart_key)) {
@@ -289,7 +289,7 @@
                 //     $item_qties[$pid] = $item_qties[$pid] +$estimate_qty;
                 // }
             }
-            $item_qties[$id_to_check] = $item_qties[$id_to_check] +$estimate_qty;
+            $item_qties[$id_to_check] = isset($item_qties[$id_to_check]) ? $item_qties[$id_to_check] + $estimate_qty : $estimate_qty ;
         }
         return $item_qties;
     }
@@ -339,14 +339,58 @@
         return $fragments;
     }
 
-    //add_filter('woocommerce_product_variation_get_price', 'get_sale_price', 99999999, 3);
-    // function get_sale_price($sale_price, $product, $include_quantity_based_pricing=true)
-    // {
-    //     if ($include_quantity_based_pricing && (is_cart() || is_checkout() || did_action('woocommerce_before_mini_cart_contents'))) {
-    //         $sale_price = apply_filters('wad_before_calculate_sale_price', $product->get_regular_price(), $product);
-    //         // modify by Jfrost 3/24
-    //         $sale_price = apply_filters('jfrost_apply_quantity_based_discount_if_needed', $product, $sale_price, 1,$m2_width,$m2_width);
-    //     }
-    //     return $sale_price;
-    // }
+    add_filter('woocommerce_product_variation_get_price', 'jfrost_get_sale_price', 99999999, 3);
+    function jfrost_get_sale_price($sale_price, $product, $include_quantity_based_pricing=true)
+    {   
+        if ($include_quantity_based_pricing && (is_cart() || is_checkout() || did_action('woocommerce_before_mini_cart_contents')) && !jfrost_is_m2_product($product->get_ID())) {
+            $sale_price = apply_filters('wad_before_calculate_sale_price', $product->get_regular_price(), $product);
+            $sale_price = apply_filters('jfrost_apply_quantity_based_discount_if_needed', $product, $sale_price, 0,0,0);
+        }
+        return $sale_price;
+    }
+    add_action( 'woocommerce_before_calculate_totals', 'jfrost_change_price_of_product' , 9999999,1 );
+
+    function jfrost_change_price_of_product( $cart_object ) {	
+        foreach ( $cart_object->get_cart() as $key => $value ) {
+            $variation_id = isset($value['variation_id']) ? $value['variation_id'] : $value['product_id'];
+            $product = wc_get_product($value['variation_id'] );
+            $is_m2 = jfrost_is_m2_product($variation_id);
+            $price =  $value['data']->get_price();
+            if ($is_m2){
+                $m2_height = $value['wad_qbp_square_size_h'];
+                $m2_width = $value['wad_qbp_square_size_w'];
+                $quantity = $value['quantity'];
+                $m2_value = floatval($m2_height) * floatval($m2_width) / 10000 ; 
+                $m2_value = $m2_value == 0 ? 1 : $m2_value;
+
+                $sale_price = $product->get_price();
+                $price = apply_filters('jfrost_apply_quantity_based_discount_if_needed', $product, $sale_price, 0,$m2_width,$m2_height) * $m2_value;
+                $price = number_format($price, 2, ",", ".");
+                $value['data']->set_price($price);
+            }
+        }
+    }
+    function jfrost_is_m2_product($variation_id){
+        $product_obj  = wc_get_product($variation_id);
+
+        if (is_null($product_obj)) {
+            return false;
+        }
+
+        $product_type = $product_obj->get_type();
+        if ('variation' != $product_type) {
+            return false;
+        }
+
+        $parent_obj = $product_obj->get_parent_id();
+
+        $qbp_data = get_post_meta($parent_obj, 'o-discount', true);
+
+        if (isset($qbp_data[ $variation_id ])) {
+            $qbp_range = $qbp_data[ $variation_id ]['square-meter'];
+            return $qbp_range['options'] == 'yes' ? true : false;
+        }
+
+        return false;
+    }
 ?>

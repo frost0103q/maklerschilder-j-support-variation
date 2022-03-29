@@ -53,5 +53,11 @@
 
         return false;
     });
-
+    $(document).on('change click dbclick', "input[name='o-discounts[qbp][square][w]']", function(){
+        $('.single-product .quantity.buttons_added input.qty').trigger('change');
+    });
+    $(document).on('change click dbclick', "input[name='o-discounts[qbp][square][h]']", function(){
+        $('.single-product .quantity.buttons_added input.qty').trigger('change');
+    });
+    
 })( jQuery );
