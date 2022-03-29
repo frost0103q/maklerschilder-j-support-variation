@@ -16,7 +16,7 @@
  * Plugin Name:       Jfrost Woommerce Variation Supporter
  * Plugin URI:        http://jfrostdev.com/wordpress/plugin/j-woo-variation-supporter
  * Description:       This supports product variation updates dynamically when quantity changes.
- * Version:           1.0.6
+ * Version:           1.1.0
  * Author:            Jfrost Dev 
  * Author URI:        http://jfrostdev.com/
  * Text Domain:       j-woo-variation-supporter
